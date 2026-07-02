@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Standard high-reliability helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Rigid schema validation blueprint to block shadow updates
+    function isValidLetter(data) {
+      return data.title is string && data.title.size() <= 200
+        && data.recipient is string && data.recipient.size() <= 100
+        && data.sender is string && data.sender.size() <= 100
+        && data.body is string && data.body.size() <= 10000
+        && data.theme is string && data.theme.size() <= 50
+        && data.userId == request.auth.uid;
+    }
+
+    // Letters collection rules
+    match /letters/{letterId} {
+      // get: Any user with the direct shared link (meaning they know the letterId) can read the letter
+      allow get: if true;
+      
+      // list: Only the composer user can list their own letters
+      allow list: if isEmailVerified() && resource.data.userId == request.auth.uid;
+
+      // create: Must be signed-in with a verified email, matches server timestamp, and fits the strict 7-key schema
+      allow create: if isEmailVerified()
+        && incoming().createdAt == request.time
+        && isValidLetter(incoming())
+        && incoming().keys().hasAll(['title', 'recipient', 'sender', 'body', 'theme', 'userId', 'createdAt'])
+        && incoming().keys().size() == 7;
+
+      // update & delete: Only the original creator can edit or delete their letter
+      allow update: if isEmailVerified()
+        && existing().userId == request.auth.uid
+        && incoming().createdAt == existing().createdAt
+        && isValidLetter(incoming())
+        && incoming().keys().hasAll(['title', 'recipient', 'sender', 'body', 'theme', 'userId', 'createdAt'])
+        && incoming().keys().size() == 7;
+
+      allow delete: if isEmailVerified()
+        && existing().userId == request.auth.uid;
+    }
+  }
+}

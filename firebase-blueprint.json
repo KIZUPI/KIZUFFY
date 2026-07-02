@@ -1,0 +1,25 @@
+{
+  "entities": {
+    "Letter": {
+      "title": "Letter",
+      "description": "A digital letter, sealed in an envelope, stored securely in Firestore",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the letter" },
+        "recipient": { "type": "string", "description": "The name of the recipient" },
+        "sender": { "type": "string", "description": "The name or signature of the sender" },
+        "body": { "type": "string", "description": "The rich content body of the letter" },
+        "theme": { "type": "string", "enum": ["romantic", "grateful", "apology", "birthday", "friendship", "simple"], "description": "Visual emotional tone theme key" },
+        "userId": { "type": "string", "description": "The Google UID of the composer user who created the letter" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The server timestamp when the letter was written" }
+      },
+      "required": ["title", "recipient", "sender", "body", "theme", "userId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "letters/{letterId}": {
+      "schema": "Letter",
+      "description": "Collection of composed digital letters"
+    }
+  }
+}

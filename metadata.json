@@ -1,0 +1,6 @@
+{
+  "name": "Letter Poster",
+  "description": "A simple and elegant website to write, preview, and share personal letters with soft animations and slow auto-scroll.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
