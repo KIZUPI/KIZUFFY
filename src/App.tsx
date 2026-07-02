@@ -195,12 +195,28 @@ export default function App() {
     if (hash === '#/compose') return { name: 'compose' };
     if (hash === '#/preview') return { name: 'preview' };
     
+    const sanitizeId = (rawId: string) => {
+      let clean = rawId.trim();
+      if (clean.endsWith('/')) {
+        clean = clean.slice(0, -1);
+      }
+      const queryIdx = clean.indexOf('?');
+      if (queryIdx !== -1) {
+        clean = clean.substring(0, queryIdx);
+      }
+      const hashIdx = clean.indexOf('#');
+      if (hashIdx !== -1) {
+        clean = clean.substring(0, hashIdx);
+      }
+      return clean;
+    };
+
     if (hash.startsWith('#/success/')) {
-      const id = hash.replace('#/success/', '');
+      const id = sanitizeId(hash.replace('#/success/', ''));
       return { name: 'success', id };
     }
     if (hash.startsWith('#/letter/')) {
-      const id = hash.replace('#/letter/', '');
+      const id = sanitizeId(hash.replace('#/letter/', ''));
       return { name: 'letter', id };
     }
     return { name: 'landing' };
@@ -953,9 +969,32 @@ function SuccessView({ id, copiedId, setCopiedId }: SuccessViewProps) {
   const shareUrl = `${appUrl}#/letter/${id}`;
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(shareUrl);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2500);
+    try {
+      navigator.clipboard.writeText(shareUrl)
+        .then(() => {
+          setCopiedId(id);
+          setTimeout(() => setCopiedId(null), 2500);
+        })
+        .catch(() => {
+          // Fallback
+          const input = document.getElementById('share-url-input') as HTMLInputElement;
+          if (input) {
+            input.select();
+            document.execCommand('copy');
+            setCopiedId(id);
+            setTimeout(() => setCopiedId(null), 2500);
+          }
+        });
+    } catch (err) {
+      // Fallback
+      const input = document.getElementById('share-url-input') as HTMLInputElement;
+      if (input) {
+        input.select();
+        document.execCommand('copy');
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2500);
+      }
+    }
   };
 
   return (
@@ -981,10 +1020,13 @@ function SuccessView({ id, copiedId, setCopiedId }: SuccessViewProps) {
         <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest self-start">Shareable URL Link</span>
         <div className="flex items-center gap-2 bg-white border border-neutral-150 rounded-xl p-2.5 shadow-inner">
           <input 
+            id="share-url-input"
             type="text" 
             readOnly 
             value={shareUrl} 
-            className="flex-1 text-xs text-neutral-600 bg-transparent focus:outline-none select-all font-mono overflow-ellipsis" 
+            onClick={(e) => (e.target as HTMLInputElement).select()}
+            onFocus={(e) => e.target.select()}
+            className="flex-1 text-xs text-neutral-600 bg-transparent focus:outline-none select-all font-mono" 
           />
           <button 
             onClick={copyToClipboard}

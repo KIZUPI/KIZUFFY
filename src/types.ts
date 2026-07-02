@@ -134,15 +134,34 @@ export function encodeLetter(letter: Omit<Letter, 'id' | 'createdAt'>): string {
  */
 export function decodeLetter(base64: string): Omit<Letter, 'id' | 'createdAt'> | null {
   try {
+    if (!base64) return null;
+
+    // Clean up input from URL encoding, trailing slashes, or query parameters
+    let cleanB64 = base64.trim();
+    if (cleanB64.endsWith('/')) {
+      cleanB64 = cleanB64.slice(0, -1);
+    }
+    const queryIdx = cleanB64.indexOf('?');
+    if (queryIdx !== -1) {
+      cleanB64 = cleanB64.substring(0, queryIdx);
+    }
+    const hashIdx = cleanB64.indexOf('#');
+    if (hashIdx !== -1) {
+      cleanB64 = cleanB64.substring(0, hashIdx);
+    }
+
     let decoded = '';
 
-    if (base64.startsWith('v2_')) {
-      const decompressed = LZString.decompressFromEncodedURIComponent(base64.slice(3));
+    if (cleanB64.startsWith('v2_')) {
+      // Replace spaces with '+' in case they were decoded as spaces by the browser/router, and run decodeURIComponent
+      const sanitized = decodeURIComponent(cleanB64.slice(3)).replace(/ /g, '+');
+      const decompressed = LZString.decompressFromEncodedURIComponent(sanitized);
       if (!decompressed) return null;
       decoded = decompressed;
     } else {
       // Fallback for older formats
-      decoded = decodeURIComponent(escape(atob(base64)));
+      const sanitized = decodeURIComponent(cleanB64).replace(/ /g, '+');
+      decoded = decodeURIComponent(escape(atob(sanitized)));
     }
     
     // Graceful backward-compatibility: If it starts with '{', it's the old JSON format
